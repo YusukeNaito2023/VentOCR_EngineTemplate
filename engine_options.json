@@ -1,0 +1,9 @@
+{
+  "initial_ocr": {
+    "use_gpu": true,
+    "sampling_size": 10
+  },
+  "post_ocr": {
+    "fps": 10
+  }
+}
