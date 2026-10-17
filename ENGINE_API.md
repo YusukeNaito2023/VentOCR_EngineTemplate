@@ -17,10 +17,11 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 - アプリは、エンジンのリポジトリの決まったタグを `ventocr_core/runtime/Engine/<engine_key>/` に取り込む（git submodule）。
   同じリポジトリの別のタグを、別のエンジンキーとして並べて取り込める（NAVA: `VentOCR_NAVA` の v1.0.0〜v1.3.0 を `nava_ventocr`〜`nava_ventocr_v1_3` に）
 - ライセンスは MIT（各リポジトリの `LICENSE`）
-- 利用者は、アプリの「解析 > エンジン…」→「GitHub から探す…」で、公開されているエンジンのタグをダウンロードして入れられる（VentOCR 0.2.8 から）。
-  アプリが探すのは**信頼する所有者（既定は YusukeNaito2023。利用者が増やせる）の、名前が `VentOCR_` で始まる公開リポジトリ**の**タグ**だけ。
-  タグの `manifest.json` の `engine_key` がエンジンキー（入れるフォルダの名前）になり、`engine_key` の無いタグは一覧に出ない。
-  入れたエンジンは、アプリに付属の同じエンジンキーのエンジンより優先される（フォルダの優先順は §9）
+- 利用者は、アプリの「解析 > エンジン…」から、**エンジンの一覧**（公開リポジトリ
+  [VentOCR_EngineRegistry](https://github.com/YusukeNaito2023/VentOCR_EngineRegistry) の `engines.json`）に載っているエンジンをインストールできる（VentOCR 0.4.0 から）。
+  一覧に載せるには、タグを push したあと VentOCR_EngineRegistry の `tools/make_entry.py` で項目を作り、**精度の評価**（値ごとの評価・波形の一致度・
+  評価した動画と呼吸の数・換気モード・コメント）を書いて、一覧の管理者に送る（プルリクエスト）。手順と項目は VentOCR_EngineRegistry の README.md。
+  タグの `manifest.json` の `engine_key` がエンジンキー（入れるフォルダの名前）になる。入れたエンジンは、アプリに付属の同じエンジンキーのエンジンより優先される
 
 ```
 <engine_key>/                 アプリに取り込まれたときのフォルダ名 = エンジンキー（例: hamilton_ventocr）。解析結果・DB にはこの名前で記録される
@@ -299,6 +300,7 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
   設定の `post_ocr.fps` にも同じ値が入る（§4.1・§6）。秒の閾値などをフレーム数で決め打ちしているエンジンは、10 以外で正しく動くことを確かめてから
   `manifest.json` の `engine_api` を 2 にする（1 のままのエンジンを 10 fps 以外で使うと、アプリが注意を出す）。アプリは engine_api 1 のエンジンもそのまま使える
 
+- 2026-10-18: インストールできるのはエンジンの一覧（VentOCR_EngineRegistry）に載っているものだけになった（VentOCR 0.4.0。§1）。約束事の中身は変わらない
 - 2026-10-17: アプリ（0.2.8）が GitHub からエンジンをダウンロードできるようになったことを §1 に、manifest.json の `engine_key` を §8 に書いた。
   エンジンを探すフォルダは「VENTOCR_ENGINE_PATH → ダウンロードしたエンジン → アプリに付属のエンジン」の順（約束事の中身は変わらないので engine_api は 1 のまま）
 
