@@ -17,6 +17,10 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 - アプリは、エンジンのリポジトリの決まったタグを `ventocr_core/runtime/Engine/<engine_key>/` に取り込む（git submodule）。
   同じリポジトリの別のタグを、別のエンジンキーとして並べて取り込める（NAVA: `VentOCR_NAVA` の v1.0.0〜v1.3.0 を `nava_ventocr`〜`nava_ventocr_v1_3` に）
 - ライセンスは MIT（各リポジトリの `LICENSE`）
+- 利用者は、アプリの「解析 > エンジン…」→「GitHub から探す…」で、公開されているエンジンのタグをダウンロードして入れられる（VentOCR 0.2.8 から）。
+  アプリが探すのは**信頼する所有者（既定は YusukeNaito2023。利用者が増やせる）の、名前が `VentOCR_` で始まる公開リポジトリ**の**タグ**だけ。
+  タグの `manifest.json` の `engine_key` がエンジンキー（入れるフォルダの名前）になり、`engine_key` の無いタグは一覧に出ない。
+  入れたエンジンは、アプリに付属の同じエンジンキーのエンジンより優先される（フォルダの優先順は §9）
 
 ```
 <engine_key>/                 アプリに取り込まれたときのフォルダ名 = エンジンキー（例: hamilton_ventocr）。解析結果・DB にはこの名前で記録される
@@ -257,6 +261,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | `base_resolution`, `supported_resolutions` | 推奨 | 基準にした動画の解像度（表示のみ） |
 | `has_extract_waves` | 任意 | `extract_waves` を持つか（表示のみ） |
 | `output_columns` | 任意 | `{"frames": [...], "breaths": [...]}`（表示のみ） |
+| `engine_key` | **必須**（アプリからダウンロードしてもらうとき） | エンジンキー。英字で始まる英数字と `_`（例 `"hamilton_ventocr"`）。§1・§2 |
 | `ventocr_min` | 任意 | 必要なアプリの版（いまは表示のみ。段階2でアプリが確かめる予定） |
 
 ## 9. 開発の手順
@@ -287,6 +292,9 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- 2026-10-17: アプリ（0.2.8）が GitHub からエンジンをダウンロードできるようになったことを §1 に、manifest.json の `engine_key` を §8 に書いた。
+  エンジンを探すフォルダは「VENTOCR_ENGINE_PATH → ダウンロードしたエンジン → アプリに付属のエンジン」の順（約束事の中身は変わらないので engine_api は 1 のまま）
 
 - 2026-10-17: エンジンを機種ごとのリポジトリ（`VentOCR_<機種>`）に分け、この文書を `VentOCR_EngineTemplate` に移した（約束事の中身は変わらないので engine_api は 1 のまま）
 - engine_api 1（2026-10-17）: この文書を作成（Web 版から引き継いだ形をそのまま記述）。`--engine-dir`・`VENTOCR_ENGINE_PATH` を追加
