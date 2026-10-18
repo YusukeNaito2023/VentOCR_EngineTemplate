@@ -222,7 +222,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | `Wave_T0`, `Wave_Rate` | 推奨 | 波形の最初の点の時刻（動画の先頭からの秒）と、1秒あたりの点の数。波形の各点の時刻 = `Wave_T0 + i / Wave_Rate`。**いちばん確かな時刻**で、あればこれを使う |
 | `X_Start`, `Sweep_Cursor_Start`, `Sweep_Cursor_End` | 任意 | NAVA 系の掃引: 波形の左端、開始・終了画像の掃引位置（消去帯の右端。画面の x）。`Wave_T0` が無いときの時刻と、キャプチャーの走査線に使う。3つそろって使われる |
 | `Region_X_Start`, `Sweep_Start`, `Sweep_End` | 任意 | Bennett 980 の掃引（終了画像の掃引線 = 波形の右端）。3つそろって使われる |
-| `P_min`/`P_max`, `F_min`/`F_max`, `V_min`/`V_max`, `E_min`/`E_max`, `Pes_min`/`Pes_max` | 任意 | 呼吸器の画面の縦軸の範囲（Pressure・Flow・Volume・Edi・Pes）。チャートの縦軸に使う |
+| `P_min`/`P_max`, `F_min`/`F_max`, `V_min`/`V_max`, `E_min`/`E_max`, `Pes_min`/`Pes_max` | 任意 | 呼吸器の画面の縦軸の範囲（Pressure・Flow・Volume・Edi・Pes）。チャートの縦軸に使う（その呼吸の波形がこの範囲の外に出ていれば、アプリは波形も入るように縦軸を広げる。VentOCR 0.4.3 から） |
 | `Start_Time`, `End_Time` | 任意 | 呼吸の開始・終了（秒）。あれば `Frame` より優先 |
 | `Status` | 非推奨 | あるとその値がそのまま状態になる（`Normal`・`Alert` 以外だと絞り込みが効かない）。使わず `Alert` で表す |
 | `Excluded`, `Split_From` | **使わない** | アプリが書く列（除外・分割）。エンジンは出さない |
@@ -302,6 +302,8 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- 2026-10-18: `*_min`/`*_max` の外に出た波形もチャートに出るよう、アプリが縦軸を広げるようになった（VentOCR 0.4.3。§7.1。約束事の中身は変わらない）
 
 - 2026-10-18: 解析の始めに先頭 50 フレームで動画とエンジンが合っているかを確かめるようになった（VentOCR 0.4.1。§3.1）。読めなかった値は空にすることを明記（約束事の版は 2 のまま）
 
