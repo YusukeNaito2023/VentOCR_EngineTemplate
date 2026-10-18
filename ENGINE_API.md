@@ -1,4 +1,4 @@
-# VentOCR エンジンの約束事（engine_api 2）
+# VentOCR エンジンの約束事（engine_api 3）
 
 VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エンジン（人工呼吸器の機種ごとの OCR・波形抽出）の間の約束事です。
 エンジンを作る・直すときは、この文書に書かれたことだけを前提にしてください。ここに無い動き（アプリの内部の関数など）に頼ると、
@@ -50,7 +50,7 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 |---|---|---|
 | `core.py` の `ENGINE_VERSION = "1.4.0"` | エンジンの版（文字列） | **解析結果に記録される版**（`manifest.json` の `engine_version`）。行頭に文字列で書く（アプリは import せずに正規表現でも読む） |
 | `manifest.json` の `version` | 同じ値 | 「解析 > エンジン…」の表示。`ENGINE_VERSION` と違うと注意が出る |
-| `manifest.json` の `engine_api` | この約束事の版（いまは `2`。10 fps 以外に対応していないエンジンは `1` のまま） | アプリが対応する版より大きいと、アプリはそのエンジンを使わない（「VentOCR を更新してください」） |
+| `manifest.json` の `engine_api` | この約束事の版（いまは `3`。§5.1 のフレームの画像の扱いに合わせていないエンジンは `2`、10 fps 以外に対応していないエンジンは `1` のまま） | アプリが対応する版より大きいと、アプリはそのエンジンを使わない（「VentOCR を更新してください」） |
 
 - 解析結果が変わる変更は、版を上げる。アプリに取り込んでもらう版には **タグ `v<版>`**（例 `v1.4.0`）を付ける
 - 古い結果を同じ版で解析し直せるよう、**結果が大きく変わる版は新しいエンジンキー**（例: `nava_ventocr_v1_4`。アプリに新しいフォルダとして
@@ -72,12 +72,12 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 
 | 引数 | 内容 |
 |---|---|
-| `frames` | フレームの反復子（BGR の `numpy.ndarray`）。受け取った時点で、そのフレームは `frames_dir/frame_%08d.jpg` に保存済み |
+| `frames` | フレームの反復子（BGR の `numpy.ndarray`）。engine_api 2 以前は、受け取った時点でそのフレームが `frames_dir/frame_%08d.jpg` に保存済み。engine_api 3 では保存しない（§5.1） |
 | `total_frames` | この区間のフレーム数（int） |
 | `subfolder` | 区間の番号（5桁の文字列。例 `"00003"`） |
 | `settings` | 設定（§6）。`settings.get("initial_ocr", {})` で読む |
 | `progress_callback(current, total, message="")` | 進み具合（キーワード引数で呼んでよい）。`message` は使われない |
-| `frames_dir` | この区間のフレーム画像のフォルダ（`./temp/<user_id>/Frames/<subfolder>`） |
+| `frames_dir` | この区間のフレーム画像のフォルダ（`./temp/<user_id>/Frames/<subfolder>`。engine_api 3 では、開いた画像だけがアプリによって作られる。§5.1） |
 
 戻り値: 1フレーム1行の DataFrame。
 - **必須の列**: `Frame`（区間内の 0 からのフレーム番号）
@@ -115,7 +115,7 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 | 引数 | 内容 |
 |---|---|
 | `df_frames`, `df_breaths` | `post_ocr` の戻り値。`df_frames` は**その場で書き換えてよい**（呼吸を区切り直したとき、`Frames.csv` も書き直される） |
-| `frames_root` | 動画全体の通し番号のフレーム画像（`./temp/<user_id>/Frames/_flat/frame_%08d.jpg`。`Frame` と同じ番号） |
+| `frames_root` | 動画全体の通し番号のフレーム画像（`./temp/<user_id>/Frames/_flat/frame_%08d.jpg`。`Frame` と同じ番号。engine_api 3 では、開いた画像だけが作られる。§5.1） |
 | `output_dir` | 呼吸ごとの波形 CSV を書くフォルダ（作成済み） |
 | `archive_dir` | 結果に一緒に入れたいファイルを置くフォルダ（作成済み。§7.5） |
 
@@ -185,6 +185,22 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 
 - `temp/<user_id>/` は解析の前後に消される。ここ以外（カレントディレクトリの直下など）に書いたファイルは残ってしまうので、書かない
   （古い NAVA が書く `breath.csv`・`frames.csv`・`temp/Cdyn_ROIs_*` はアプリが消している）
+
+### 5.1 フレームの画像（engine_api 3）
+
+解析の時間を短くするため、engine_api 3 のエンジンには、アプリは**全フレームの画像を保存しない**（1 時間の動画で 36,000 枚。保存だけで
+区間の処理時間の約 2 割かかっていたうえ、どのエンジンも実際に読むのは呼吸の終わりの画面など一部だけだった）。
+
+- `Frames/<区間>/frame_%08d.jpg` と `Frames/_flat/frame_%08d.jpg` は、エンジンが **`cv2.imread(パス)`** で開いたときに、アプリが保存してある
+  区間動画から**その1枚だけ**を作る。中身は engine_api 2 以前に保存していた画像と**バイト単位で同じ**（同じ JPEG）なので、読み取った結果は変わらない。
+  `os.path.isfile(パス)` も、その動画にあるフレームなら True を返す
+- フレームの画像は `cv2.imread` で読む（PIL・imageio・`np.fromfile` などで直接開かない）。`os.listdir`・`glob` でフォルダの中身を数えたり
+  一覧したりしない（作られていない画像は一覧に出ない）。必要なフレームは、Frames.csv の番号からパスを組み立てる
+- 1枚ごとに動画から取り出すので、**読むのは必要なフレームだけにする**（呼吸の終わりの画面、呼吸の始まり・終わりの画面など）。
+  全フレームを読むような処理（異常なフレームの検出など）は、`initial_ocr` の中で（フレームはメモリにある）行い、結果を表の列に入れる
+- `initial_ocr` の中で、その区間のフレームを `frames_dir` から `cv2.imread` で読むこともできる（同じく、その1枚だけが作られる）
+- engine_api 2 以前のエンジンには、アプリは今までどおり全フレームを保存する
+- アプリが engine_api 3 に対応するのは VentOCR 0.5.0 から（それより前のアプリは、engine_api 3 のエンジンを使わない）
 
 ## 6. 設定（schema.py・engine_options.json）
 
@@ -302,6 +318,10 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- engine_api 3（2026-10-18）: アプリは全フレームの画像を保存せず、エンジンが `cv2.imread` で開いたフレームだけを区間動画から作る（§5.1。
+  中身は前と同じ JPEG）。フレームの画像は `cv2.imread` で読み、必要なものだけを読む。対応するアプリは VentOCR 0.5.0 から。
+  全フレームを読まないことを確かめたエンジンは `manifest.json` の `engine_api` を 3 にする
 
 - 2026-10-18: `*_min`/`*_max` の外に出た波形もチャートに出るよう、アプリが縦軸を広げるようになった（VentOCR 0.4.3。§7.1。約束事の中身は変わらない）
 
