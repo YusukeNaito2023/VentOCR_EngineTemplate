@@ -13,15 +13,15 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 
 ## 1. エンジンのリポジトリとフォルダ
 
-- エンジンは機種ごとに1つの git リポジトリ（`VentOCR_<機種>`。例 `VentOCR_Hamilton`）。**リポジトリの中身がそのまま1つのエンジンのフォルダ**になる
-- アプリは、エンジンのリポジトリの決まったタグを `ventocr_core/runtime/Engine/<engine_key>/` に取り込む（git submodule）。
-  同じリポジトリの別のタグを、別のエンジンキーとして並べて取り込める（NAVA: `VentOCR_NAVA` の v1.0.0〜v1.3.0 を `nava_ventocr`〜`nava_ventocr_v1_3` に）
+- エンジンは機種ごとに1つの git リポジトリ（`VentOCR_<機種>`。例 `VentOCR_Hamilton`）。**リポジトリの中身がそのまま1つのエンジンのフォルダ**になる。
+  **エンジンキーは機種ごとに1つ**（例 `hamilton_ventocr`・`nava_ventocr`）。版を上げてもキーは変えない（§2）
 - ライセンスは MIT（各リポジトリの `LICENSE`）
-- 利用者は、アプリの「解析 > エンジン…」から、**エンジンの一覧**（公開リポジトリ
-  [VentOCR_EngineRegistry](https://github.com/YusukeNaito2023/VentOCR_EngineRegistry) の `engines.json`）に載っているエンジンをインストールできる（VentOCR 0.4.0 から）。
-  一覧に載せるには、タグを push したあと VentOCR_EngineRegistry の `tools/make_entry.py` で項目を作り、**精度の評価**（値ごとの評価・波形の一致度・
+- アプリにはエンジンは付属しない（VentOCR 0.6.0 から）。利用者は、アプリの「解析 > エンジン…」から、**エンジンの一覧**（公開リポジトリ
+  [VentOCR_EngineRegistry](https://github.com/YusukeNaito2023/VentOCR_EngineRegistry) の `engines.json`）に載っている版をインストールする。
+  一覧はエンジンキーごとに版の一覧（`versions`）を持ち、利用者は載っている版のどれか1つを入れる（あとで別の版に入れ直せる）
+- 一覧に載せるには、タグ `v<版>` を push したあと VentOCR_EngineRegistry の `tools/make_entry.py` で版を足し、**精度の評価**（値ごとの評価・波形の一致度・
   評価した動画と呼吸の数・換気モード・コメント）を書いて、一覧の管理者に送る（プルリクエスト）。手順と項目は VentOCR_EngineRegistry の README.md。
-  タグの `manifest.json` の `engine_key` がエンジンキー（入れるフォルダの名前）になる。入れたエンジンは、アプリに付属の同じエンジンキーのエンジンより優先される
+  タグの `manifest.json` の `engine_key` がエンジンキー（入れるフォルダの名前）になる
 
 ```
 <engine_key>/                 アプリに取り込まれたときのフォルダ名 = エンジンキー（例: hamilton_ventocr）。解析結果・DB にはこの名前で記録される
@@ -48,14 +48,15 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 
 | どこ | 何を書く | 使われ方 |
 |---|---|---|
-| `core.py` の `ENGINE_VERSION = "1.4.0"` | エンジンの版（文字列） | **解析結果に記録される版**（`manifest.json` の `engine_version`）。行頭に文字列で書く（アプリは import せずに正規表現でも読む） |
-| `manifest.json` の `version` | 同じ値 | 「解析 > エンジン…」の表示。`ENGINE_VERSION` と違うと注意が出る |
+| `core.py` の `ENGINE_VERSION = "0.1.0"` | エンジンの版（文字列） | **解析結果に記録される版**（`manifest.json` の `engine_version`）。行頭に文字列で書く（アプリは import せずに正規表現でも読む） |
+| `manifest.json` の `version` | 同じ値 | 「解析 > エンジン…」の表示とエンジンの一覧の版。`ENGINE_VERSION` と違うと一覧に載せられない |
 | `manifest.json` の `engine_api` | この約束事の版（いまは `3`。§5.1 のフレームの画像の扱いに合わせていないエンジンは `2`、10 fps 以外に対応していないエンジンは `1` のまま） | アプリが対応する版より大きいと、アプリはそのエンジンを使わない（「VentOCR を更新してください」） |
 
-- 解析結果が変わる変更は、版を上げる。アプリに取り込んでもらう版には **タグ `v<版>`**（例 `v1.4.0`）を付ける
-- 古い結果を同じ版で解析し直せるよう、**結果が大きく変わる版は新しいエンジンキー**（例: `nava_ventocr_v1_4`。アプリに新しいフォルダとして
-  取り込む）にするのが基本（NAVA はこの方式。manifest の `engine_key` も変える）。小さな修正は同じエンジンキーのまま版を上げてよい（Hamilton はこの方式）
-- `ENGINE_VERSION` と `manifest.json` の `version` は必ずそろえる
+- 版は **`0.X.Y`**（アプリと同じ規則）。ふだんの変更は `Y` を上げ、解析結果が大きく変わる変更や、前の版と互換の無い変更（設定の形・出力の列の意味が変わるなど）は `X` を上げて `Y` を 0 にする
+- 解析結果が変わる変更は、必ず版を上げる。一覧に載せる版には **タグ `v<版>`**（例 `v0.1.0`）を付ける。タグは動かさない・消さない（一覧はタグのコミットを指す）
+- **`ENGINE_VERSION`・`manifest.json` の `version`・タグの3つは必ずそろえる**（そろっていないと一覧に載せられない。`tools/check_registry.py` が確かめる）
+- 版を上げてもエンジンキーは変えない（版ごとに別のキーにしない）。古い版で解析し直したいときは、一覧の古い版を入れ直す。
+  解析結果には、エンジンキー・版（`engine_version`）・コミットが記録される
 
 ## 3. 関数（core.py）
 
@@ -258,6 +259,9 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 
 ### 7.3 BreathCSVs/<呼吸番号>.csv（呼吸ごとの波形）
 
+- エンジンは作業フォルダの `GS.Dir_BreathCSVs(user_id)` に書く。アプリは解析結果を保存するとき、これを1つのファイル（`waves.sqlite3`）に
+  そのままのバイト列でまとめる（VentOCR 0.5.6 から。外付けのドライブで小さなファイルをたくさん書くと遅いため）。
+  「ファイル > 呼吸の波形を書き出す…」で、同じ中身の `<呼吸番号>.csv` に戻せる。エンジンが書くものは変わらない
 - ファイル名は `BreathNumber` の数字だけ（`12.csv`）。この呼吸の波形が無ければ書かない
 - 列: `X` と、`Pressure`・`Flow`・`Volume`・`Edi`・`Pes` のうち読んだもの（ほかの列名はチャートに出ない）
 - 1行 = 画面の1列（掃引の向きに連続）。行の数と `Wave_Rate` から時刻が決まる
@@ -280,7 +284,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 |---|---|---|
 | `version` | **必須** | 版（§2。`ENGINE_VERSION` と同じ） |
 | `engine_api` | **必須**（無ければ 1 とみなす） | この約束事の版 |
-| `display_name` | **必須** | 画面の表示名（例 `"NAVA v1.3"`） |
+| `display_name` | **必須** | 画面の表示名（例 `"NAVA"`。版は入れない） |
 | `ventilator` | 推奨 | 対応する人工呼吸器の機種（例 `"Servo-U"`）。「解析 > エンジン…」の機種での絞り込みに使う |
 | `description`, `developer` | 推奨 | 説明・開発者（表示と検索） |
 | `breath_summary` | 推奨 | 「呼吸プロパティ」のサマリーに出す Breaths.csv の列（リスト。無い列は飛ばす） |
@@ -321,6 +325,11 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- 2026-10-19: 版の付け方を改めた（§1・§2）。版は 0.X.Y、`ENGINE_VERSION`・`manifest.json` の `version`・タグをそろえるのを必須にし、エンジンキーは機種ごとに1つ
+  （版ごとに別のキーにしない。NAVA は `nava_ventocr` にまとめた）。全エンジンを 0.1.0 として出し直し、古いタグは消した。エンジンの一覧は format 2
+  （キーごとに `versions`）。アプリにはエンジンを付属しない（VentOCR 0.6.0 から）。§7.3 にアプリが波形を `waves.sqlite3` にまとめて保存することを追記。
+  エンジンとアプリの間の関数・出力は変わらないので、約束事の版は 3 のまま
 
 - 2026-10-19: §5.1 に「フレームの画像はなるべく番号の小さい順に開く」、§3 に「幅 1920 を超える動画の固定フレームレートへの変換は veryfast」を追記（約束事の版は 3 のまま）
 
