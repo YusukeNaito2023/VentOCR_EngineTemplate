@@ -242,12 +242,12 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | `Wave_T0`, `Wave_Rate` | 推奨 | 波形の最初の点の時刻（動画の先頭からの秒）と、1秒あたりの点の数。波形の各点の時刻 = `Wave_T0 + i / Wave_Rate`。**いちばん確かな時刻**で、あればこれを使う |
 | `X_Start`, `Sweep_Cursor_Start`, `Sweep_Cursor_End` | 任意 | NAVA 系の掃引: 波形の左端、開始・終了画像の掃引位置（消去帯の右端。画面の x）。`Wave_T0` が無いときの時刻と、キャプチャーの走査線に使う。3つそろって使われる |
 | `Region_X_Start`, `Sweep_Start`, `Sweep_End` | 任意 | Bennett 980 の掃引（終了画像の掃引線 = 波形の右端）。3つそろって使われる |
-| `P_min`/`P_max`, `F_min`/`F_max`, `V_min`/`V_max`, `E_min`/`E_max`, `Pes_min`/`Pes_max` | 任意 | 呼吸器の画面の縦軸の範囲（Pressure・Flow・Volume・Edi・Pes）。チャートの縦軸に使う（その呼吸の波形がこの範囲の外に出ていれば、アプリは波形も入るように縦軸を広げる。VentOCR 0.4.3 から） |
+| 縦軸の範囲の列（例 `P_min`/`P_max`・`Ptranspulm_min`/`Ptranspulm_max`） | 任意 | 呼吸器の画面の縦軸の範囲。どの波形にどの列を使うかは `manifest.json` の `outputs.waves[].scale` に書く（§8.1）。チャートの縦軸に使う（その呼吸の波形がこの範囲の外に出ていれば、アプリは波形も入るように縦軸を広げる。VentOCR 0.4.3 から）。`outputs` が無いエンジンは、`P_min`/`P_max`（Pressure）・`F_min`/`F_max`（Flow）・`V_min`/`V_max`（Volume）・`E_min`/`E_max`（Edi）・`Pes_min`/`Pes_max`（Pes） |
 | `Start_Time`, `End_Time` | 任意 | 呼吸の開始・終了（秒）。あれば `Frame` より優先 |
 | `Status` | 非推奨 | あるとその値がそのまま状態になる（`Normal`・`Alert` 以外だと絞り込みが効かない）。使わず `Alert` で表す |
 | `Excluded`, `Split_From` | **使わない** | アプリが書く列（除外・分割）。エンジンは出さない |
 
-- `manifest.json` の `breath_summary` に挙げた列が「呼吸プロパティ」のサマリーに出る（§8）
+- `manifest.json` の `outputs.breath_values`（無ければ `breath_summary`）に挙げた列が「呼吸プロパティ」のサマリーに出る（§8・§8.1）
 
 ### 7.2 Frames.csv（`df_frames`）
 
@@ -263,7 +263,9 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
   そのままのバイト列でまとめる（VentOCR 0.5.6 から。外付けのドライブで小さなファイルをたくさん書くと遅いため）。
   「ファイル > 呼吸の波形を書き出す…」で、同じ中身の `<呼吸番号>.csv` に戻せる。エンジンが書くものは変わらない
 - ファイル名は `BreathNumber` の数字だけ（`12.csv`）。この呼吸の波形が無ければ書かない
-- 列: `X` と、`Pressure`・`Flow`・`Volume`・`Edi`・`Pes` のうち読んだもの（ほかの列名はチャートに出ない）
+- 列: `X` と、読んだ波形（列名は自由。例 `Pressure`・`Flow`・`Volume`・`Edi`・`Pes`・`Ptranspulm`）
+  - チャートに出る波形・表示名・単位・色・縦軸は、`manifest.json` の `outputs.waves` に宣言する（§8.1。VentOCR 0.6.2 から）。宣言に無い列も、名前のまま出る（単位なし・縦軸は解析全体の値から）
+  - **列の名前 = 量**。同じ名前を別の量に使わない（例: Hamilton の4段目は、設定で Pes にしたら `Pes`、経肺圧にしたら `Ptranspulm`）
 - 1行 = 画面の1列（掃引の向きに連続）。行の数と `Wave_Rate` から時刻が決まる
 - `X` の意味はエンジンごとに違ってよい（通し番号・画面の列・折り返しを展開した位置）。アプリは `X` を画面の位置としては使わない
   （`Wave_T0`・`Wave_Rate` も掃引の列も無い古い結果だけ、時刻の割り振りに `X` の間隔を使う）
@@ -287,15 +289,66 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | `display_name` | **必須** | 画面の表示名（例 `"NAVA"`。版は入れない） |
 | `ventilator` | 推奨 | 対応する人工呼吸器の機種（例 `"Servo-U"`）。「解析 > エンジン…」の機種での絞り込みに使う |
 | `description`, `developer` | 推奨 | 説明・開発者（表示と検索） |
-| `breath_summary` | 推奨 | 「呼吸プロパティ」のサマリーに出す Breaths.csv の列（リスト。無い列は飛ばす） |
-| `labels` | 任意 | 列の表示名 `{列名: 表示名}`（サマリー・詳細データ） |
-| `accuracy` | 任意 | 列ごとの `{"unit": 単位, "method": …, "threshold": …}`。`unit` はサマリーの項目名に「（単位）」で付く |
+| `outputs` | 推奨 | 出力の宣言（チャートに出す時系列・1呼吸1値。§8.1。VentOCR 0.6.2 から） |
+| `breath_summary` | 任意 | 「呼吸プロパティ」のサマリーに出す Breaths.csv の列（リスト。無い列は飛ばす）。`outputs.breath_values` があればそちらを使う |
+| `labels` | 任意 | 列の表示名 `{列名: 表示名}`（サマリー・詳細データ）。`outputs` の `label` があればそちらを使う |
+| `accuracy` | 任意 | 列ごとの `{"unit": 単位, "method": …, "threshold": …}`（エンジンの一覧の精度の評価の欄）。`outputs.breath_values` が無いとき、`unit` がサマリーの単位になる |
 | `base_resolution`, `supported_resolutions` | 推奨 | 基準にした動画の解像度（表示のみ） |
 | `has_extract_waves` | 任意 | `extract_waves` を持つか（表示のみ） |
 | `output_columns` | 任意 | `{"frames": [...], "breaths": [...]}`（表示のみ） |
 | `engine_key` | **必須**（アプリからダウンロードしてもらうとき） | エンジンキー。英字で始まる英数字と `_`（例 `"hamilton_ventocr"`）。§1・§2 |
 | `frame_check` | 任意 | `false` なら、解析の始めに先頭 50 フレームで動画とエンジンが合っているかを確かめない（§3.1。既定 true） |
-| `ventocr_min` | 任意 | 必要なアプリの版（いまは表示のみ。段階2でアプリが確かめる予定） |
+| `ventocr_min` | 推奨 | 必要なアプリの版。アプリはこれより古ければ、そのエンジンをインストールさせず、解析にも使わない（「VentOCR を更新してください」。VentOCR 0.6.2 から）。`outputs` を使うなら `"0.6.2"` 以上にする |
+
+### 8.1 outputs（出力の宣言。VentOCR 0.6.2 から）
+
+アプリは波形の種類を決め打ちしない。エンジンが、出力ごとに「チャートに出す時系列か、1呼吸1値か」と、表示名・単位・色・縦軸の決め方を宣言し、
+アプリはそれを読んで出す。事後解析のモジュール（MODULE_API.md、VentOCR 0.7.0 から）も同じ形で宣言する。
+
+```json
+"outputs": {
+  "waves": [
+    {"name": "Pressure",   "label": "Paw", "unit": "cmH2O", "color": "#d62728", "scale": {"min": "P_min", "max": "P_max"}},
+    {"name": "Flow",       "unit": "L/min", "color": "#1f77b4", "scale": {"min": "F_min", "max": "F_max"}},
+    {"name": "Volume",     "unit": "mL",    "color": "#2ca02c", "scale": {"min": "V_min", "max": "V_max"}, "zero_line": false},
+    {"name": "Pes",        "unit": "cmH2O", "color": "#8c564b", "scale": {"min": "Pes_min", "max": "Pes_max"}},
+    {"name": "Ptranspulm", "unit": "cmH2O", "color": "#e377c2", "scale": {"min": "Ptranspulm_min", "max": "Ptranspulm_max"}}
+  ],
+  "breath_values": [
+    {"name": "VTE",     "label": "VTE", "unit": "mL", "format": "{:.0f}"},
+    {"name": "Trigger", "label": "トリガー（A: 自発 / C: 強制）"}
+  ]
+}
+```
+
+**waves**（チャートに出す時系列。並びの順 = メニューの順・既定で出す順）
+
+| キー | 必須 | 内容 |
+|---|---|---|
+| `name` | **必須** | 波形の CSV の列名（§7.3） |
+| `label` | 推奨 | 表示名（無ければ name）。画面の言語ごとに `{"ja": …, "en": …}` も可 |
+| `unit` | 推奨 | 単位（表示のみ。換算はしない） |
+| `color` | 任意 | 線の色 `#rrggbb`（無ければアプリが決まった並びから割り当てる） |
+| `scale` | 任意 | 縦軸の決め方。`{"min": "<Breaths.csv の列>", "max": "<列>"}` = 呼吸器の画面の目盛り（呼吸ごと）、`{"range": [下, 上]}` = 決まった範囲。無い・目盛りを読めない呼吸は、解析全体の波形の 0.5〜99.5 パーセンタイルに 1 割の余白（はみ出す呼吸は、その呼吸だけ広げる） |
+| `zero_line` | 任意 | 0 の線を引くか（既定 true） |
+| `default_shown` | 任意 | 初めて開いたときに出すか（既定 true。チャートは最大4段で、超えたら宣言の順で先の4つ） |
+| `style` | 任意 | `"solid"`（既定）か `"dash"` |
+
+- **設定で出たり出なかったりする波形も、全部宣言する**（例: Hamilton は Pes と Ptranspulm の両方）。アプリは、宣言にあって、その解析の波形の CSV に実際にある列だけを出す
+- 宣言に無いのに波形の CSV にある列（`X` 以外）も、名前のまま出る（隠さない）
+
+**breath_values**（1呼吸1値。呼吸プロパティのサマリーなど）
+
+| キー | 必須 | 内容 |
+|---|---|---|
+| `name` | **必須** | Breaths.csv の列名 |
+| `label`・`unit` | 推奨 | 表示名・単位 |
+| `format` | 任意 | 数の書き方（Python の format。例 `"{:.1f}"`） |
+| `summary` | 任意 | 呼吸プロパティのサマリーに出すか（既定 true） |
+
+- アプリは解析のときに `outputs` を解析結果の manifest.json に写す。エンジンを入れ替えても、その解析は解析したときの宣言で見える
+- `outputs` が無いエンジン（0.1.0 の各エンジン）は、アプリがエンジンごとに持つ既定の宣言で今までどおり見える（Hamilton = Pressure・Flow・Volume・Pes、Bennett 980 = Pressure・Flow・Volume、
+  NAVA = Pressure・Flow・Volume・Edi。V600・PostNAVA は既定を持たないので、宣言を足すまでは名前のまま）
 
 ## 9. 開発の手順
 
@@ -325,6 +378,9 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- 2026-10-21: 出力の宣言 `outputs`（§8.1）を足した。チャートに出す波形・1呼吸1値の表示名・単位・色・縦軸を、エンジンが宣言する（アプリは決め打ちしない。VentOCR 0.6.2 から）。
+  波形の列名は自由になり、列の名前 = 量とした（§7.3）。`ventocr_min` をアプリが確かめるようになった（§8）。任意の追加なので、約束事の版は 3 のまま
 
 - 2026-10-19: 版の付け方を改めた（§1・§2）。版は 0.X.Y、`ENGINE_VERSION`・`manifest.json` の `version`・タグをそろえるのを必須にし、エンジンキーは機種ごとに1つ
   （版ごとに別のキーにしない。NAVA は `nava_ventocr` にまとめた）。全エンジンを 0.1.0 として出し直し、古いタグは消した。エンジンの一覧は format 2
