@@ -338,6 +338,17 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 - **設定で出たり出なかったりする波形も、全部宣言する**（例: Hamilton は Pes と Ptranspulm の両方）。アプリは、宣言にあって、その解析の波形の CSV に実際にある列だけを出す
 - 宣言に無いのに波形の CSV にある列（`X` 以外）も、名前のまま出る（隠さない）
 
+**alerts**（任意。Breaths.csv の `Alert` 列に出す値の一覧。VentOCR 0.7.x から）
+
+| キー | 必須 | 内容 |
+|---|---|---|
+| `name` | **必須** | `Alert` 列の値（例 `Popup`・`Cleared`・`Clipped`） |
+| `label` | 推奨 | 意味の説明（例「設定のダイアログで波形が隠れた」）。画面の言語ごとに `{"ja": …, "en": …}` も可 |
+| `exclude_from_accuracy` | 任意 | 精度の評価（エンジンの一覧の validation）で、この Alert の呼吸を除外するか（既定 false） |
+
+- アプリは Alert の値を名前で見分けない（空でなければ、どの値でも呼吸の状態は「Alert」）。`alerts` は、意味の説明と、精度の評価の決まりを残すためのもの
+- 1つの呼吸に複数の Alert を書くときの区切り方は、エンジンの README に書く（アプリは文字のまま出す）
+
 **breath_values**（1呼吸1値。呼吸プロパティのサマリーなど）
 
 | キー | 必須 | 内容 |
@@ -379,6 +390,8 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- 2026-10-25: `outputs.alerts`（Alert の値の一覧・意味・精度の評価で除外するか）を足した（§8.1）。エンジンの一覧の validation に `excluded_alerts`（その評価で実際に除外した Alert）を足した。任意の追加なので、約束事の版は 3 のまま
 
 - 2026-10-21: manifest.json の `frame_check_columns`（先頭 50 フレームの確かめに使う列。§8。VentOCR 0.6.3 から）を足した。任意の追加なので、約束事の版は 3 のまま
 
