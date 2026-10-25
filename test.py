@@ -1,9 +1,9 @@
 """
-Engine検証スクリプト。
-sample.mp4に対してinitial_ocr → post_ocr → (extract_waves) を実行し、
-expected_output/ の正解CSVと比較してtest_spec.jsonの基準でPASS/FAIL判定する。
+Engine validation script.
+Runs initial_ocr -> post_ocr -> (extract_waves) on sample.mp4, compares the result
+with the reference CSVs in expected_output/, and judges PASS/FAIL by the criteria in test_spec.json.
 
-使用方法:
+Usage:
     python test.py
     python test.py --engine-dir /path/to/engine
 """
@@ -18,7 +18,7 @@ import numpy as np
 
 
 def _load_test_spec(engine_dir):
-    """test_spec.jsonを読み込む。"""
+    """Load test_spec.json."""
     spec_path = os.path.join(engine_dir, "test_spec.json")
     if not os.path.exists(spec_path):
         raise FileNotFoundError(f"test_spec.json not found: {spec_path}")
@@ -27,7 +27,7 @@ def _load_test_spec(engine_dir):
 
 
 def _frame_generator(video_path, frames_dir):
-    """動画からカラーフレームをジェネレータで生成し、JPEGも保存する。"""
+    """Yield color frames from the video, also saving each as a JPEG."""
     os.makedirs(frames_dir, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     frame_count = 0
@@ -43,7 +43,7 @@ def _frame_generator(video_path, frames_dir):
 
 
 def _evaluate_metric(actual_values, expected_values, metric_def):
-    """メトリクスに基づいて評価を行う。"""
+    """Evaluate according to the metric."""
     metric = metric_def["metric"]
     threshold = metric_def["threshold"]
 
@@ -87,11 +87,11 @@ def _evaluate_metric(actual_values, expected_values, metric_def):
 
 
 def run_test(engine_dir="."):
-    """メインテスト実行関数。"""
+    """Main test runner."""
     engine_dir = os.path.abspath(engine_dir)
     print(f"Engine directory: {engine_dir}")
 
-    # test_spec.json 読み込み
+    # Load test_spec.json
     spec = _load_test_spec(engine_dir)
     video_path = os.path.join(engine_dir, spec["sample_video"])
     if not os.path.exists(video_path):
@@ -103,17 +103,17 @@ def run_test(engine_dir="."):
         print(f"ERROR: expected_output directory not found: {expected_dir}")
         sys.exit(1)
 
-    # Engine読み込み
+    # Load the engine
     sys.path.insert(0, os.path.dirname(engine_dir))
     engine_name = os.path.basename(engine_dir)
     engine = importlib.import_module(f"{engine_name}.core")
 
-    # engine_options.json 読み込み
+    # Load engine_options.json
     options_path = os.path.join(engine_dir, "engine_options.json")
     with open(options_path, "r", encoding="utf-8") as f:
         engine_options = json.load(f)
 
-    # フレーム抽出・解析
+    # Extract and analyze frames
     frames_dir = os.path.join(engine_dir, "_test_frames")
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -127,10 +127,10 @@ def run_test(engine_dir="."):
     print("Running post_ocr...")
     df_frames, df_breaths = engine.post_ocr(df_ocr, 0, "test", engine_options)
 
-    # 正解データ読み込み
+    # Load the reference data
     expected_frames = pd.read_csv(os.path.join(expected_dir, "Frames.csv"))
 
-    # 評価
+    # Evaluate
     results = {}
     all_passed = True
     for key, metric_def in spec.get("outputs", {}).items():
@@ -143,7 +143,7 @@ def run_test(engine_dir="."):
         if not result["passed"]:
             all_passed = False
 
-    # レポート出力
+    # Build the report
     report = {
         "engine": engine_name,
         "engine_version": getattr(engine, "ENGINE_VERSION", "unknown"),
@@ -162,13 +162,13 @@ def run_test(engine_dir="."):
         print(f"  [{status}] {key}: {res['metric']} = {res['value']} (threshold: {res['threshold']})")
     print("=" * 60)
 
-    # JSON出力
+    # Write JSON
     report_path = os.path.join(engine_dir, "test_report.json")
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     print(f"\nReport saved: {report_path}")
 
-    # テストフレーム削除
+    # Delete the test frames
     import shutil
     if os.path.exists(frames_dir):
         shutil.rmtree(frames_dir)

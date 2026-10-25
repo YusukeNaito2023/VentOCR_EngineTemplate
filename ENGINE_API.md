@@ -40,6 +40,10 @@ VentOCR のアプリ（Mac・Windows のデスクトップ版）と、解析エ�
 - フォルダ名が `_` で始まるものは一覧に出ない（ひな形・作業用）
 - エンジンは `Engine.<engine_key>` というパッケージとして読み込まれる。**エンジン内のファイルは相対 import**（`from . import Settings`）で読む。
   ほかのエンジンを import しない
+- **エンジンが出すもの・エンジンのリポジトリの中身は英語だけ**（ユーザーの決定。2026-10-25）。画面に出る文字（manifest の `display_name`・`description`・
+  `outputs` の `label`・`unit`、schema の項目名・説明・選択肢）、ログ・エラー・進み具合のメッセージ、README、コードのコメントと docstring。
+  CHANGELOG は、これからの版の分を英語で書く（過去の版の分は訳し直さない）。日本語の表示名を `{"ja": …, "en": …}` や `<キー>_ja` で添えることもしない。
+  アプリは、エンジンの英語を訳さずにそのまま出す（画面の言語が日本語のときも）
 - 自分のフォルダのファイル（基準画像など）は `os.path.dirname(os.path.abspath(__file__))` を基準に開く。カレントディレクトリ基準にしない
 - サンプル動画・作業ファイル（`temp/`・`_runtime_models/`・`__pycache__/`）はリポジトリに入れない（`.gitignore`）。
   配布物を作るとき（アプリの `tools/make_dist.py`）も `*.mp4`・`*.mov` などの動画・`temp/`・`_runtime_models/` は除かれる
@@ -317,7 +321,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
   ],
   "breath_values": [
     {"name": "VTE",     "label": "VTE", "unit": "mL", "format": "{:.0f}"},
-    {"name": "Trigger", "label": "トリガー（A: 自発 / C: 強制）"}
+    {"name": "Trigger", "label": "Trigger (A: assisted / C: controlled)"}
   ]
 }
 ```
@@ -327,7 +331,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | キー | 必須 | 内容 |
 |---|---|---|
 | `name` | **必須** | 波形の CSV の列名（§7.3） |
-| `label` | 推奨 | 表示名（無ければ name）。画面の言語ごとに `{"ja": …, "en": …}` も可 |
+| `label` | 推奨 | 表示名（無ければ name）。英語の文字列（`{"ja": …, "en": …}` の形は使わない。古いアプリ・今のアプリとも、ただの文字列を出せる） |
 | `unit` | 推奨 | 単位（表示のみ。換算はしない） |
 | `color` | 任意 | 線の色 `#rrggbb`（無ければアプリが決まった並びから割り当てる） |
 | `scale` | 任意 | 縦軸の決め方。`{"min": "<Breaths.csv の列>", "max": "<列>"}` = 呼吸器の画面の目盛り（呼吸ごと）、`{"range": [下, 上]}` = 決まった範囲。無い・目盛りを読めない呼吸は、解析全体の波形の 0.5〜99.5 パーセンタイルに 1 割の余白（はみ出す呼吸は、その呼吸だけ広げる） |
@@ -343,7 +347,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | キー | 必須 | 内容 |
 |---|---|---|
 | `name` | **必須** | `Alert` 列の値（例 `Popup`・`Cleared`・`Clipped`） |
-| `label` | 推奨 | 意味の説明（例「設定のダイアログで波形が隠れた」）。画面の言語ごとに `{"ja": …, "en": …}` も可 |
+| `label` | 推奨 | 意味の説明。英語の文字列（例 `"The waveform was hidden by a settings dialog"`） |
 | `exclude_from_accuracy` | 任意 | 精度の評価（エンジンの一覧の validation）で、この Alert の呼吸を除外するか（既定 false） |
 
 - アプリは Alert の値を名前で見分けない（空でなければ、どの値でも呼吸の状態は「Alert」）。`alerts` は、意味の説明と、精度の評価の決まりを残すためのもの
@@ -354,7 +358,7 @@ GPU（CUDA / Apple MPS）は EasyOCR・PyTorch が自動で使う（設定 `use_
 | キー | 必須 | 内容 |
 |---|---|---|
 | `name` | **必須** | Breaths.csv の列名 |
-| `label`・`unit` | 推奨 | 表示名・単位 |
+| `label`・`unit` | 推奨 | 表示名・単位（英語の文字列） |
 | `format` | 任意 | 数の書き方（Python の format。例 `"{:.1f}"`） |
 | `summary` | 任意 | 呼吸プロパティのサマリーに出すか（既定 true） |
 
@@ -390,6 +394,9 @@ cd "$APP" && "$PY" -m ventocr_core 動画.mov --out 出力フォルダ --work-ro
 - 新しいエンジンは、このリポジトリ（`VentOCR_EngineTemplate`）を写して作る（新しいリポジトリ `VentOCR_<機種>` にする）
 
 ## 10. 変更履歴
+
+- 2026-10-25: エンジンが出すもの・リポジトリの中身は英語だけにした（§1。ユーザーの決定）。`outputs` の `label` は英語の文字列（`{"ja","en"}` の形を使わない。§8.1）。
+  約束事の形は変わらない（アプリは前からただの文字列を出せる）ので、約束事の版は 3 のまま
 
 - 2026-10-25: `outputs.alerts`（Alert の値の一覧・意味・精度の評価で除外するか）を足した（§8.1）。エンジンの一覧の validation に `excluded_alerts`（その評価で実際に除外した Alert）を足した。任意の追加なので、約束事の版は 3 のまま
 

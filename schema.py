@@ -1,6 +1,6 @@
-# VentOCR設定UIで表示される設定スキーマ。
+# Settings schema shown in the VentOCR settings UI.
 # type: int, float, bool, list, multiselect
-# engine_options.json のデフォルト値と対応させること。
+# Keep it consistent with the default values in engine_options.json.
 
 ENGINE_SETTINGS_SCHEMA = {
     "initial_ocr": {

@@ -1,30 +1,30 @@
-<!-- ここから: VentOCR_EngineTemplate（このリポジトリ）の説明。新しいエンジンを作るときは、ここから下の「ここまで」までを消す -->
-# VentOCR エンジンのひな形と約束事
+<!-- BEGIN: description of VentOCR_EngineTemplate (this repository). When creating a new engine, delete everything from here down to "END" -->
+# VentOCR engine template and contract
 
-VentOCR は人工呼吸器の画面の動画から数値（OCR）と波形を読み取る、研究用のデスクトップアプリです。
-解析エンジンは機種ごとの公開リポジトリ（`VentOCR_<機種>`）で開発し、アプリが決まった版（タグ）を取り込みます。
+VentOCR is a research desktop app that reads numeric values (OCR) and waveforms from videos of ventilator screens.
+Analysis engines are developed in a public repository per device model (`VentOCR_<model>`), and the app pulls in a specific version (tag).
 
-- **エンジンとアプリの約束事: [ENGINE_API.md](ENGINE_API.md)**（正本はここ。エンジンはここに書かれたことだけを前提に作る）
-- 新しいエンジン: このリポジトリを写して `VentOCR_<機種>` を作る（`core.py`・`schema.py`・`Settings.py`・`ExtractWaves.py`・`test.py` がひな形）
-- エンジンのリポジトリ: `VentOCR_NAVA`（Servo-U NAVA。v1.0.0〜v1.3.0）・`VentOCR_PostNAVA`（Servo-U）・`VentOCR_Hamilton`・`VentOCR_V600`（Dräger V600 / Savina 300）・
-  `VentOCR_Bennett980`（Puritan Bennett 980）
-- ライセンス: MIT（[LICENSE](LICENSE)）。研究用のソフトウェアで、医療機器ではありません
+- **Contract between engines and the app: [ENGINE_API.md](ENGINE_API.md)** (the authoritative version lives here; engines should rely only on what is written there)
+- New engine: copy this repository to create `VentOCR_<model>` (`core.py`, `schema.py`, `Settings.py`, `ExtractWaves.py` and `test.py` are the templates)
+- Engine repositories: `VentOCR_NAVA` (Servo-U NAVA, v1.0.0 to v1.3.0), `VentOCR_PostNAVA` (Servo-U), `VentOCR_Hamilton`, `VentOCR_V600` (Dräger V600 / Savina 300),
+  `VentOCR_Bennett980` (Puritan Bennett 980)
+- License: MIT ([LICENSE](LICENSE)). This is research software, not a medical device
 
-<!-- ここまで -->
+<!-- END -->
 
 # [Engine Name] VentOCR Engine
 
 ## Supported Devices
-- [対象人工呼吸器名]
+- [Target ventilator name]
 
 ## Description
-[Engineの概要]
+[Engine overview]
 
 ## Expected Layout
 See `layout.jpg` for the ventilator display layout and ROI positions.
 
 ## Limitations
-- [既知の制限事項]
+- [Known limitations]
 
 ## Author
-- [開発者名]
+- [Developer name]

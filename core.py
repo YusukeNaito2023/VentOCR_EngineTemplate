@@ -1,6 +1,6 @@
 """
 [Engine Name] VentOCR Engine
-[対象人工呼吸器名]のディスプレイ映像からOCR解析を行う。
+Runs OCR analysis on display video from [target ventilator name].
 
 Interface:
     initial_ocr(frames, total_frames, subfolder, settings, progress_callback, frames_dir)
@@ -20,20 +20,20 @@ import pandas as pd
 import numpy as np
 import os
 
-# Engineバージョン（開発者が管理するリリース番号）
+# Engine version (release number managed by the developer)
 ENGINE_VERSION = "0.1.0"
 
-# このEngineが動作確認されたVentOCRのバージョン
+# VentOCR version this engine was tested with
 VENTOCR_TESTED = "0.5.5"
 
 
 def _to_gray(color_frame):
-    """カラーフレーム (BGR) をグレースケールに変換する。"""
+    """Convert a color frame (BGR) to grayscale."""
     return np.dot(color_frame[..., :3], [0.114, 0.587, 0.299]).astype(np.uint8)
 
 
 def _load_frame_from_disk(frames_dir, frame_index):
-    """ディスクからカラーフレームJPEGを読み込む（ランダムアクセス用）。"""
+    """Load a color frame JPEG from disk (for random access)."""
     path = os.path.join(frames_dir, f"frame_{frame_index:08d}.jpg")
     return cv2.imread(path)
 
@@ -45,23 +45,23 @@ def _load_frame_from_disk(frames_dir, frame_index):
 def initial_ocr(frames, total_frames, subfolder, settings={},
                 progress_callback=None, frames_dir=None):
     """
-    全フレームからOCR解析を行う。
+    Run OCR analysis on all frames.
 
     Args:
-        frames: カラーフレームのジェネレータ (BGR, numpy配列)。
-                1枚ずつ順次渡される。list化禁止。
-                過去フレームへのランダムアクセスが必要な場合は frames_dir を使用する。
-        total_frames: int - 総フレーム数
-        subfolder: str - セグメント識別子
-        settings: dict - engine_options.jsonから読み込まれた設定
+        frames: generator of color frames (BGR, numpy arrays).
+                Frames are passed one at a time. Do not convert to a list.
+                Use frames_dir if you need random access to past frames.
+        total_frames: int - total number of frames
+        subfolder: str - segment identifier
+        settings: dict - settings loaded from engine_options.json
         progress_callback: callable(current, total, message) or None
-        frames_dir: str - フレームJPEG保存ディレクトリ（ランダムアクセス用）
+        frames_dir: str - directory of saved frame JPEGs (for random access)
 
     Returns:
-        pd.DataFrame - 必須列: Frame (int, 0-indexed), BreathMark (int, 0 or 1)
-                       Engine固有の値列を追加可能
+        pd.DataFrame - required columns: Frame (int, 0-indexed), BreathMark (int, 0 or 1)
+                       Engine-specific value columns may be added
     """
-    # TODO: settings から必要なパラメータを取得
+    # TODO: get the required parameters from settings
     # ocr_settings = settings.get("initial_ocr", {})
 
     data = []
@@ -74,21 +74,21 @@ def initial_ocr(frames, total_frames, subfolder, settings={},
             row = {
                 "Frame": frame_count,
                 "BreathMark": 0,
-                # TODO: Engine固有の出力列を追加
+                # TODO: add engine-specific output columns
                 # "VTE": "",
                 # "VTE_raw": "",
                 # "VTE_conf": "0.00",
             }
 
-            # カラーフレームからグレースケールに変換（OCRに必要な場合）
+            # Convert the color frame to grayscale (if needed for OCR)
             gray = _to_gray(color_frame)
 
-            # TODO: ROIの抽出とOCR処理を実装
+            # TODO: implement ROI extraction and OCR
             # roi = gray[y:y+h, x:x+w]
             # result = reader.readtext(roi)
 
-            # TODO: BreathMark検出ロジックを実装
-            # カラーフレームを直接使う場合は color_frame を使用
+            # TODO: implement BreathMark detection
+            # Use color_frame to work with the color frame directly
 
             data.append(row)
             pbar.update(1)
@@ -107,33 +107,33 @@ def initial_ocr(frames, total_frames, subfolder, settings={},
 
 def post_ocr(df, Analyze_Id, user_ID, settings={}):
     """
-    initial_ocrの結果を後処理し、フレームDataFrameと呼吸DataFrameを生成する。
+    Post-process the initial_ocr result into a frame DataFrame and a breath DataFrame.
 
     Args:
-        df: pd.DataFrame - initial_ocrの出力
-        Analyze_Id: int - 解析ID
-        user_ID: str - ユーザーID
-        settings: dict - engine_options.jsonから読み込まれた設定
+        df: pd.DataFrame - output of initial_ocr
+        Analyze_Id: int - analysis ID
+        user_ID: str - user ID
+        settings: dict - settings loaded from engine_options.json
 
     Returns:
         (df_frames, df_breaths): tuple of DataFrames
-        df_framesに追加必須の列:
-            - BreathNumber (int, 1-indexed, BreathMarkの累積和)
-            - Time (str, "HH:MM:SS:CC" 形式)
-            - Alert (str, 空文字 or アラート理由)
+        Columns that must be added to df_frames:
+            - BreathNumber (int, 1-indexed, cumulative sum of BreathMark)
+            - Time (str, "HH:MM:SS:CC" format)
+            - Alert (str, empty string or alert reason)
             - Abnormal (int, 0 or 1)
     """
     fps = settings.get("post_ocr", {}).get("fps", 10)
     df = df.copy()
 
-    # BreathNumber: BreathMarkの累積和（1-indexed）
+    # BreathNumber: cumulative sum of BreathMark (1-indexed)
     df["BreathNumber"] = df["BreathMark"].cumsum()
     df.loc[df["BreathNumber"] == 0, "BreathNumber"] = 1
 
-    # タイムスタンプ生成
+    # Generate timestamps
     df["Time"] = df["Frame"].apply(lambda f: _format_time(f, fps))
 
-    # 必須列の初期化
+    # Initialize required columns
     if "Alert" not in df.columns:
         df["Alert"] = ""
     if "Abnormal" not in df.columns:
@@ -141,7 +141,7 @@ def post_ocr(df, Analyze_Id, user_ID, settings={}):
 
     df_frames = df
 
-    # 呼吸レベルの集約（各BreathNumberの最初のフレーム）
+    # Aggregate to breath level (first frame of each BreathNumber)
     df_breaths = df.loc[df.groupby("BreathNumber")["Frame"].idxmin()].copy()
 
     print(f"[post_ocr] {len(df_frames)} frames, {len(df_breaths)} breaths")
@@ -149,31 +149,31 @@ def post_ocr(df, Analyze_Id, user_ID, settings={}):
 
 
 # ============================================================
-# extract_waves (オプション)
+# extract_waves (optional)
 # ============================================================
 
-# extract_wavesはオプション関数。VentOCRはhasattr(Engine, 'extract_waves')で存在確認する。
-# 波形抽出が不要なEngineはこの関数を削除またはコメントアウトしてよい。
+# extract_waves is optional. VentOCR checks for it with hasattr(Engine, 'extract_waves').
+# Engines that do not extract waveforms may delete or comment out this function.
 
 # def extract_waves(df_frames, df_breaths, frames_root, output_dir, user_ID,
 #                   settings={}, overwrite=False, archive_dir=None):
 #     """
-#     呼吸ごとに波形データをCSVに抽出する。
+#     Extract waveform data to a CSV per breath.
 #
 #     Args:
-#         df_frames: pd.DataFrame - post_ocrの出力（Abnormal列含む）
-#         df_breaths: pd.DataFrame - 呼吸レベルのDataFrame
-#         frames_root: str - フレーム画像のディレクトリパス
-#         output_dir: str - CSV出力先ディレクトリ
+#         df_frames: pd.DataFrame - output of post_ocr (including the Abnormal column)
+#         df_breaths: pd.DataFrame - breath-level DataFrame
+#         frames_root: str - directory path of frame images
+#         output_dir: str - output directory for CSVs
 #         user_ID: str
 #         settings: dict
-#         overwrite: bool - 既存CSVを上書きするか
-#         archive_dir: str or None - fields.txt出力先
+#         overwrite: bool - whether to overwrite existing CSVs
+#         archive_dir: str or None - output location for fields.txt
 #
 #     Returns:
 #         (effective_breaths_count: int, df_breaths: pd.DataFrame)
 #
-#     CSV format: X, Wave1, Wave2, ...  (1行目がヘッダ)
+#     CSV format: X, Wave1, Wave2, ...  (first row is the header)
 #     """
 #     from . import ExtractWaves as ew
 #     ew.set_config(settings)
@@ -186,11 +186,11 @@ def post_ocr(df, Analyze_Id, user_ID, settings={}):
 
 
 # ============================================================
-# ヘルパー関数
+# Helper functions
 # ============================================================
 
 def _format_time(frame, fps):
-    """フレーム番号からHH:MM:SS:CC形式のタイムスタンプを生成。"""
+    """Build an HH:MM:SS:CC timestamp from a frame number."""
     total_seconds = frame / fps
     s = int(total_seconds)
     centiseconds = int((total_seconds - s) * 100)
